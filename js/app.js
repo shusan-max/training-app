@@ -91,7 +91,17 @@ initRestTimer();
 window.addEventListener('hashchange', showScreen);
 showScreen();
 
-// オフライン用の仕組み(sw.js)を登録する
+// オフライン用の仕組み(sw.js)を登録し、読み込んだファイルを保存してもらう
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch((error) => console.error(error));
+  navigator.serviceWorker.ready.then((registration) => {
+    const page = new URL('./', location.href).href;
+    const files = performance.getEntriesByType('resource')
+      .map((entry) => entry.name.split('#')[0])
+      .filter((url) => url.startsWith(page));
+    // アイコンなど、画面の表示には使わないファイルも足しておく
+    const extras = ['manifest.webmanifest', 'icons/apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png']
+      .map((path) => new URL(path, page).href);
+    registration.active?.postMessage({ type: 'cache-urls', urls: [...new Set([page, ...files, ...extras])] });
+  });
 }

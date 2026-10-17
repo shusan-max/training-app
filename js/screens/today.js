@@ -1,7 +1,7 @@
 // 「今日」画面(ホーム)
 import {
   formatDateJa, formatFullDateJa, daysSince, daysUntil, todayString,
-  formatKg, parseDateString,
+  formatKg, parseDateString, isInstalledApp,
 } from '../ui.js';
 import { getAllBodyLogs, summarizeBodyLog } from '../body-data.js';
 import { summarizeHistory } from '../logic/streaks.js';
@@ -210,6 +210,11 @@ export default {
     // 体の記録がまだなら、メニューより先に出す(疲労度などでメニューが変わるため)
     container.innerHTML = `
       <p class="date-label">${formatDateJa(new Date())}</p>
+      ${!isInstalledApp() && navigator.maxTouchPoints > 0 ? `
+        <a class="card install-hint" href="#settings">
+          📲 ホーム画面に追加すると、アプリとして使えます。手順は「設定」に ›
+        </a>
+      ` : ''}
       ${backupReminder(settings)}
       ${goalCard(settings.goal, progress)}
       ${todayLog ? '' : bodyLogCard(null)}

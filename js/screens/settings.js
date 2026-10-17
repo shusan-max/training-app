@@ -4,7 +4,7 @@ import {
   createBackupFile, saveBackupFile, markBackedUp,
   readBackupFile, restoreBackup, describeBackup,
 } from '../backup.js';
-import { formatFullDateJa, daysSince, toast } from '../ui.js';
+import { formatFullDateJa, daysSince, toast, isInstalledApp } from '../ui.js';
 
 const PLATE_STEP_OPTIONS = [[1, '1kg'], [1.25, '1.25kg'], [2.5, '2.5kg(片側1.25kg)'], [5, '5kg(片側2.5kg)']];
 const REST_OPTIONS = [[60, '1分'], [90, '1分30秒'], [120, '2分'], [180, '3分'], [240, '4分'], [300, '5分']];
@@ -23,12 +23,38 @@ function lastBackupText(lastBackupAt) {
   return `${formatFullDateJa(new Date(lastBackupAt))}(${when})`;
 }
 
+// ホーム画面に追加する手順と、データの引き継ぎ方
+function installCardHtml() {
+  if (isInstalledApp()) {
+    return `
+      <section class="card">
+        <h2>アプリとして使う</h2>
+        <p>✅ ホーム画面のアプリとして使っています。</p>
+        <p class="sub" style="margin-top:6px">Safariで試しに入れたデータを使いたいときは、Safariで「書き出す」→ ここで「読み込む」で引き継げます。</p>
+      </section>
+    `;
+  }
+  return `
+    <section class="card">
+      <h2>アプリとして使う(ホーム画面に追加)</h2>
+      <ol class="steps">
+        <li>Safariの画面下の <strong>共有ボタン</strong>(四角から上向きの矢印)を押す</li>
+        <li>メニューを下に動かして <strong>「ホーム画面に追加」</strong> を押す</li>
+        <li>名前が「トレーニング」になっているのを確かめて <strong>「追加」</strong></li>
+        <li>これからは、ホーム画面の <strong>アイコンから</strong> 開く</li>
+      </ol>
+      <p class="sub">Safariとホーム画面のアプリでは、データの保存場所が別です。今のデータを引き継ぐときは、先に下の「書き出す」でファイルに保存し、アプリを開いてから「読み込む」を使ってください。</p>
+    </section>
+  `;
+}
+
 export default {
   title: '設定',
   render(container, { settings, refresh }) {
     const { goal, profile, training, backup } = settings;
 
     container.innerHTML = `
+      ${installCardHtml()}
       <section class="card">
         <h2>目標と自分の情報</h2>
         <dl class="summary">

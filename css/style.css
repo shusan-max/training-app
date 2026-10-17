@@ -1083,3 +1083,17 @@ a.streak-card {
 }
 .tl-date { font-size: 12px; color: var(--text-sub); }
 .tl-text { font-weight: 600; }
+
+/* ===== ホーム画面への追加 ===== */
+.steps {
+  margin: 4px 0 10px;
+  padding-left: 1.4em;
+}
+.steps li { margin: 6px 0; }
+a.install-hint {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+  border-color: var(--accent);
+}

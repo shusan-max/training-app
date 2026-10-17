@@ -61,6 +61,11 @@ export function formatKg(value) {
   return String(Number(value.toFixed(2)));
 }
 
+// ホーム画面のアイコンから開いているか(アプリとして使っているか)
+export function isInstalledApp() {
+  return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+}
+
 // 挙げた重さの合計を「12.3トン」「850kg」の形にする
 export function formatVolume(kg) {
   return kg >= 1000 ? `${(kg / 1000).toFixed(1)}トン` : `${Math.round(kg)}kg`;

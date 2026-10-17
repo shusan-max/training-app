@@ -40,7 +40,30 @@ self.addEventListener('fetch', (event) => {
     } catch {
       // 電波がないときは保存しておいたファイルを返す
       const cached = await cache.match(request.url, { ignoreSearch: true });
-      return cached ?? Response.error();
+      if (cached) return cached;
+      // 画面そのもの(index.html)が見つからないときは、アプリの入口を返す
+      if (request.mode === 'navigate') {
+        const entry = await cache.match(new URL('./', self.location).href);
+        if (entry) return entry;
+      }
+      return Response.error();
+    }
+  })());
+});
+
+// 初めて開いたときは、この仕組みが動き出す前にファイルを読み込んでいるので保存できていない。
+// そこで、画面から「読み込んだファイルの一覧」を受け取って保存しておく(オフラインに備える)
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'cache-urls') return;
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of event.data.urls) {
+      if (new URL(url).origin !== self.location.origin) continue;
+      if (await cache.match(url)) continue;
+      try {
+        const response = await fetch(url, { cache: 'no-cache', credentials: 'same-origin' });
+        if (response.ok) await cache.put(url, response);
+      } catch { /* 電波がないときは次の機会に */ }
     }
   })());
 });
