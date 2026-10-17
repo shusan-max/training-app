@@ -80,3 +80,8 @@ async function showScreen() {
 
 window.addEventListener('hashchange', showScreen);
 showScreen();
+
+// オフライン用の仕組み(sw.js)を登録する
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch((error) => console.error(error));
+}
