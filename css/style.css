@@ -361,3 +361,222 @@ label.btn {
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, 8px); }
 }
+
+/* ===== 体の記録 ===== */
+.hint {
+  float: right;
+  font-size: 13px;
+}
+
+/* ±ボタンつきの入力 */
+.stepper {
+  display: grid;
+  grid-template-columns: 52px 1fr 52px;
+  gap: 8px;
+}
+.step-btn {
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 24px;
+  font-family: inherit;
+}
+.step-btn:active { background: var(--accent-soft); }
+.stepper input { text-align: center; }
+
+/* 疲労度の5つのボタン */
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.segmented button {
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  padding: 4px 0;
+}
+.segmented strong { font-size: 20px; line-height: 1.2; }
+.segmented small { font-size: 11px; color: var(--text-sub); }
+.segmented [aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.segmented [aria-checked="true"] small { color: var(--accent-text); }
+
+/* 痛む部位のボタン */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.chip {
+  min-height: 44px;
+  min-width: 64px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  resize: vertical;
+}
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.btn-danger {
+  background: transparent;
+  color: #d63b3b;
+  border: 1.5px solid #d63b3b;
+}
+
+/* 記録の小さなタグ */
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag-list li {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-size: 15px;
+}
+
+/* ===== 一覧 ===== */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+  min-height: 56px;
+}
+.list-main { flex: 1; min-width: 0; }
+.list-date { display: block; font-weight: 700; }
+.list-summary {
+  display: block;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+.chevron { color: var(--text-sub); font-size: 22px; }
+
+/* ===== 進捗のグラフ ===== */
+.period-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  background: var(--bg);
+  border-radius: 10px;
+  margin: 4px 0 8px;
+}
+.period-tabs button {
+  min-height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-sub);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+}
+.period-tabs [aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.metric {
+  padding-top: 14px;
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.metric-label { font-weight: 700; }
+.metric-value { font-size: 22px; font-weight: 700; }
+.metric-change { margin: 0 0 4px !important; }
+
+.chart { position: relative; }
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y; /* 縦のスクロールはそのまま、横になぞると値が出る */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-axis { fill: var(--text-sub); font-size: 11px; }
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart-dot {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.chart-cross { stroke: var(--text-sub); stroke-width: 1; }
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.chart-tooltip span, .chart-tooltip strong { display: block; }
+.chart-empty {
+  padding: 24px 0;
+  text-align: center;
+}

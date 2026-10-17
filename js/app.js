@@ -9,6 +9,7 @@ import progress from './screens/progress.js';
 import exercises from './screens/exercises.js';
 import settingsScreen from './screens/settings.js';
 import profile from './screens/profile.js';
+import body from './screens/body.js';
 
 // 画面の一覧。新しい画面を足すときはここに1行追加する。
 // (#の後ろの名前: 画面のファイル)
@@ -19,6 +20,7 @@ const screens = {
   exercises,
   settings: settingsScreen,
   profile,
+  body,
 };
 const DEFAULT_SCREEN = 'today';
 
@@ -36,20 +38,23 @@ async function showScreen() {
     // 初回設定がまだなら、初回設定の画面だけを出す
     let id;
     let screen;
+    let params = [];
     if (!settings) {
       id = 'setup';
       screen = setup;
     } else {
-      // URL の「#」より後ろ(例: #progress)で、どの画面を出すか決める
-      const requested = location.hash.slice(1);
+      // URL の「#」より後ろで、どの画面を出すか決める
+      // 例: #progress → 進捗画面、#body/2026-10-15 → 体の記録画面に「2026-10-15」を渡す
+      const [requested, ...rest] = location.hash.slice(1).split('/');
       id = screens[requested] ? requested : DEFAULT_SCREEN;
       screen = screens[id];
+      params = screens[requested] ? rest : [];
     }
     document.body.classList.toggle('setup-mode', !settings);
     document.getElementById('screen-title').textContent = screen.title;
 
     container.replaceChildren();
-    await screen.render(container, { settings, refresh: showScreen });
+    await screen.render(container, { settings, params, refresh: showScreen });
 
     // 今開いているタブに印をつける
     const activeTab = screen.tab ?? id;
