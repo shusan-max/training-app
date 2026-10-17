@@ -897,3 +897,87 @@ a.goal-card {
   gap: 4px;
 }
 .legend-item svg { width: 24px; height: 10px; }
+
+/* ===== 今日のメニュー ===== */
+.menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.menu-head h2 { margin: 0; }
+.type-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.reasons {
+  margin: 10px 0 0;
+  padding-left: 1.2em;
+  font-size: 14px;
+  color: var(--text-sub);
+}
+.safety {
+  margin: 10px 0 0 !important;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--accent);
+  font-size: 14px;
+  font-weight: 700;
+}
+.menu-block {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.menu-block h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.menu-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 !important;
+  font-size: 16px;
+}
+.menu-tag {
+  flex: none;
+  min-width: 44px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--bg);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.menu-tag.warm { color: var(--text-sub); }
+.acc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.acc-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.acc-list li:last-child { border-bottom: none; }
+.acc-name { display: block; font-weight: 600; }
+.acc-target { display: block; font-size: 15px; }
+.acc-note { display: block; font-size: 12px; color: var(--text-sub); }
+.menu-note { margin-top: 8px !important; font-size: 13px; }
+.type-switch { margin-top: 14px; }
+.type-switch .chips { margin-top: 4px; }
+
+/* トレーニング画面のメニュー表示 */
+.plan-head p { margin-top: 8px; }
+.plan-line {
+  margin: 4px 0 0 !important;
+  font-size: 14px;
+  font-weight: 600;
+}

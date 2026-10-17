@@ -2,15 +2,16 @@
 // #workout          … 今日の続き(無ければ新しく始める)
 // #workout/<番号>    … そのトレーニングを開く(過去の記録の修正にも使う)
 import {
-  getWorkout, findOrCreateOpenWorkout, saveWorkout, deleteWorkout,
+  getWorkout, findOrCreateOpenWorkout, saveWorkout, deleteWorkout, getPlan,
   getSetsForWorkout, saveSet, deleteSet, getPreviousSets, formatSet, formatSetList,
 } from '../workout-data.js';
+import { describeSteps, DAY_TYPES } from '../logic/planner.js';
 import { CATEGORIES, EXERCISES, getExercise, weightStep, weightLabel } from '../data/exercises.js';
 import { bestEstimate, describeEstimate } from '../logic/e1rm.js';
 import { startRest, stopRest, unlockAudio } from '../rest-timer.js';
 import { stepperHtml, bindSteppers } from '../stepper.js';
 import { newId } from '../db.js';
-import { formatDateJa, parseDateString, parseNumber, todayString, toast } from '../ui.js';
+import { formatDateJa, formatKg, parseDateString, parseNumber, todayString, toast } from '../ui.js';
 
 // 「あと何回できたか」の選択肢(3は「3回以上」)
 const RIR_OPTIONS = [[0, '0'], [1, '1'], [2, '2'], [3, '3+']];
@@ -97,13 +98,25 @@ export default {
       return;
     }
 
+    // 「今日のメニュー」から始めたときは、そのメニュー
+    const plan = workout.planId ? await getPlan(workout.planId) : null;
+    const planStepsFor = (exerciseId) => (plan ? plan.steps.filter((s) => s.exerciseId === exerciseId) : []);
+
     const state = {
       sets: await getSetsForWorkout(workout.id),
       previous: {},          // 種目ごとの前回の記録
       drafts: {},            // 種目ごとの、入力途中の値
-      active: workout.exerciseIds[workout.exerciseIds.length - 1] ?? null, // 入力欄を開いている種目
+      active: null,          // 入力欄を開いている種目
       editingSetId: null,    // 直しているセット
     };
+
+    const setsFor = (exerciseId) => state.sets.filter((s) => s.exerciseId === exerciseId);
+    // メニューのセットがまだ残っている、最初の種目
+    const nextPlannedExercise = () => workout.exerciseIds
+      .find((id) => setsFor(id).length < planStepsFor(id).length) ?? null;
+
+    state.active = (plan && nextPlannedExercise())
+      ?? workout.exerciseIds[workout.exerciseIds.length - 1] ?? null;
 
     // 前回の記録。ベンチプレスで記録が無ければ、初回設定の記録を使う
     async function loadPrevious(exerciseId) {
@@ -126,15 +139,47 @@ export default {
       document.addEventListener('visibilitychange', onVisibilityChange, { signal });
     }
 
-    const setsFor = (exerciseId) => state.sets.filter((s) => s.exerciseId === exerciseId);
-
-    // 入力欄の最初の値:今日の最後のセット → 前回の最初のセット → 空
+    // 入力欄の最初の値:メニューの次のセット → 今日の最後のセット → 前回の最初のセット → 空
     function draftFor(exercise) {
       if (state.drafts[exercise.id]) return state.drafts[exercise.id];
       const own = setsFor(exercise.id).filter((s) => !s.isWarmup);
       const last = own[own.length - 1] ?? state.previous[exercise.id]?.sets.find((s) => !s.isWarmup);
+      const next = planStepsFor(exercise.id)[setsFor(exercise.id).length];
+      if (next) {
+        return { weight: next.weight ?? last?.weight ?? null, reps: next.reps, rir: null, warmup: next.isWarmup };
+      }
       if (last) return { weight: last.weight, reps: last.reps, rir: null, warmup: false };
       return { weight: exercise.equipment === 'bodyweight' ? 0 : null, reps: null, rir: null, warmup: false };
+    }
+
+    // 入力欄の見出し(例:「次:ウォームアップ 2/5」)
+    function panelTitle(exerciseId) {
+      const steps = planStepsFor(exerciseId);
+      if (steps.length === 0) return '次のセット';
+      const index = setsFor(exerciseId).length;
+      const step = steps[index];
+      if (!step) return '予定のセットは終わりました(追加で記録もできます)';
+      const sameLabel = steps.filter((s) => s.label === step.label);
+      const position = steps.slice(0, index + 1).filter((s) => s.label === step.label).length;
+      return sameLabel.length > 1 ? `次:${step.label} ${position}/${sameLabel.length}` : `次:${step.label}`;
+    }
+
+    // カードに出す「今日の予定」
+    function planLinesHtml(exercise) {
+      const steps = planStepsFor(exercise.id);
+      if (steps.length === 0) return '';
+      if (exercise.id === 'bench-press') {
+        const warm = steps.filter((s) => s.isWarmup).map((s) => `${formatKg(s.weight)}×${s.reps}`).join(' → ');
+        const work = describeSteps(steps.filter((s) => !s.isWarmup))
+          .map((g) => `${g.label} ${formatKg(g.weight)}kg×${g.reps}回${g.count > 1 ? ` ×${g.count}セット` : ''}`);
+        return `<p class="plan-line">今日の予定:${warm ? `W ${warm} / ` : ''}${work.join(' / ')}</p>`;
+      }
+      const a = plan.accessories.find((x) => x.exerciseId === exercise.id);
+      let weight;
+      if (a.weight == null) weight = '重さは自分で';
+      else if (exercise.equipment === 'bodyweight') weight = a.weight > 0 ? `自重+${formatKg(a.weight)}kg` : '自重';
+      else weight = `${formatKg(a.weight)}kg`;
+      return `<p class="plan-line">今日の予定:${weight} × ${a.repsMin}〜${a.repsMax}回 × ${a.sets}セット(${a.note})</p>`;
     }
 
     // ----- 表示 -----
@@ -160,7 +205,7 @@ export default {
       `).join('');
       return `
         <div class="set-panel">
-          <p class="panel-title">${editing ? 'セットを直す' : '次のセット'}</p>
+          <p class="panel-title">${editing ? 'セットを直す' : panelTitle(exercise.id)}</p>
           ${stepperHtml({ name: 'weight', label: weightLabel(exercise), unit: 'kg' })}
           ${stepperHtml({ name: 'reps', label: '回数', unit: '回' })}
           <div class="field">
@@ -219,6 +264,7 @@ export default {
             ${sets.length === 0 ? `<button type="button" class="icon-btn" data-action="remove-exercise" data-exercise="${exerciseId}" aria-label="${exercise.name}を外す">×</button>` : ''}
           </div>
           <p class="previous">${previousText}</p>
+          ${planLinesHtml(exercise)}
           ${rows ? `<ol class="set-list">${rows}</ol>` : ''}
           ${isActive
             ? panelHtml(exercise, editing)
@@ -233,6 +279,13 @@ export default {
       container.innerHTML = `
         <a class="back-link" href="#today">‹ 今日に戻る</a>
         <p class="date-label">${formatDateJa(parseDateString(workout.date))}${workout.finishedAt ? '(終了済み)' : ''}</p>
+        ${plan ? `
+          <section class="card plan-head">
+            <span class="type-badge type-${plan.type}">${DAY_TYPES[plan.type]}のメニュー</span>
+            ${plan.safety ? '<p class="safety">⚠️ セーフティバーを設定するか、補助者についてもらいましょう。</p>' : ''}
+            ${plan.notes.filter((n) => !n.includes('体の記録')).map((n) => `<p class="sub">${n}</p>`).join('')}
+          </section>
+        ` : ''}
         ${ids.length ? '' : '<section class="card"><p class="sub">「+ 種目を追加」から始めましょう。</p></section>'}
         ${ids.map(cardHtml).join('')}
         <div class="button-stack">
@@ -327,11 +380,24 @@ export default {
             isWarmup: values.warmup,
             createdAt: new Date().toISOString(),
           });
-          // 次のセットも同じ重さ・回数から始める(「あと何回」は毎回選び直す)
-          state.drafts[state.active] = { ...values, rir: null };
-          startRest(settings.training.restSeconds);
+          // ウォームアップのあとは短めの休憩(最大1分)
+          const rest = settings.training.restSeconds;
+          startRest(values.warmup ? Math.min(60, rest) : rest);
         }
         await reloadSets();
+        if (!editing) {
+          if (planStepsFor(state.active).length) {
+            // メニューがあるときは、次のセットもメニューから
+            delete state.drafts[state.active];
+            // この種目の予定が終わったら、次の種目へ
+            if (setsFor(state.active).length >= planStepsFor(state.active).length) {
+              state.active = nextPlannedExercise() ?? state.active;
+            }
+          } else {
+            // 次のセットも同じ重さ・回数から始める(「あと何回」は毎回選び直す)
+            state.drafts[state.active] = { ...values, rir: null };
+          }
+        }
         draw();
         return;
       }

@@ -40,16 +40,45 @@ export async function createWorkout(date) {
   });
 }
 
+// ===== メニュー提案の記録 =====
+export function getPlan(id) {
+  return get('plans', id);
+}
+
+export function getAllPlans() {
+  return getAll('plans');
+}
+
+// 提案されたメニューでトレーニングを始める(メニューも保存して、次回の重さ決めに使う)
+export async function startPlannedWorkout(plan, date) {
+  const workout = await createWorkout(date);
+  const planRecord = {
+    ...plan,
+    id: newId(),
+    date,
+    workoutId: workout.id,
+    createdAt: new Date().toISOString(),
+  };
+  await put('plans', planRecord);
+  workout.type = plan.type;
+  workout.planId = planRecord.id;
+  workout.exerciseIds = [...plan.exerciseIds];
+  await saveWorkout(workout);
+  return workout;
+}
+
 // その日の、まだ終わっていないトレーニングを探す。無ければ新しく作る
 export async function findOrCreateOpenWorkout(date) {
   const open = (await getAllWorkouts()).find((w) => w.date === date && !w.finishedAt);
   return open ?? createWorkout(date);
 }
 
-// トレーニングと、そのセットを全部消す
+// トレーニングと、そのセット・メニューを全部消す
 export async function deleteWorkout(id) {
+  const workout = await getWorkout(id);
   const sets = await getSetsForWorkout(id);
   await removeMany('sets', sets.map((s) => s.id));
+  if (workout?.planId) await remove('plans', workout.planId);
   await remove('workouts', id);
 }
 
