@@ -1,9 +1,10 @@
 // 「今日」画面(ホーム)
 import {
-  placeholderCard, formatDateJa, formatFullDateJa, daysSince, daysUntil, todayString,
+  formatDateJa, formatFullDateJa, daysSince, daysUntil, todayString,
   formatKg, parseDateString,
 } from '../ui.js';
-import { getBodyLog, summarizeBodyLog } from '../body-data.js';
+import { getAllBodyLogs, summarizeBodyLog } from '../body-data.js';
+import { summarizeHistory } from '../logic/streaks.js';
 import {
   getAllWorkouts, getAllSets, getAllPlans, startPlannedWorkout,
 } from '../workout-data.js';
@@ -158,14 +159,34 @@ function bodyLogCard(log) {
   `;
 }
 
+// 継続と積み重ね(くわしくは「記録」画面)
+function streakCard(summary) {
+  const recentPr = [...summary.timeline].reverse().find((t) => t.kind === 'pr');
+  return `
+    <a class="card streak-card" href="#history">
+      <h2>継続と積み重ね</h2>
+      <div class="streak-grid">
+        <div><span class="big">${summary.weekStreak}</span><span class="unit">週連続</span><span class="cap">週1回以上</span></div>
+        <div><span class="big">${summary.totalSessions}</span><span class="unit">回</span><span class="cap">累計トレーニング</span></div>
+        <div><span class="big">${summary.bodyStreak}</span><span class="unit">日連続</span><span class="cap">体の記録</span></div>
+      </div>
+      <p class="sub">今週 ${summary.thisWeekCount}回${recentPr ? ` ・ 最新の自己ベスト:${recentPr.text.replace(' を初めて挙げた', '')}(${formatDateJa(parseDateString(recentPr.date))})` : ''}</p>
+    </a>
+  `;
+}
+
 export default {
   title: '今日',
   async render(container, { settings, refresh }) {
     const todayText = todayString();
     const today = parseDateString(todayText);
-    const [todayLog, workouts, sets, plans] = await Promise.all([
-      getBodyLog(todayText), getAllWorkouts(), getAllSets(), getAllPlans(),
+    const [bodyLogs, workouts, sets, plans] = await Promise.all([
+      getAllBodyLogs(), getAllWorkouts(), getAllSets(), getAllPlans(),
     ]);
+    const todayLog = bodyLogs.find((l) => l.date === todayText);
+    const summary = summarizeHistory({
+      workouts, sets, bodyLogs, baseline: settings.benchBaseline, today,
+    });
     const progress = benchProgress(
       benchSessions(sets.filter((s) => s.exerciseId === 'bench-press'), settings.benchBaseline),
       settings.goal,
@@ -194,9 +215,7 @@ export default {
       ${todayLog ? '' : bodyLogCard(null)}
       ${trainingHtml}
       ${todayLog ? bodyLogCard(todayLog) : ''}
-      ${placeholderCard('継続と積み重ね', '⑧', [
-        'カレンダー、累計、連続週数',
-      ])}
+      ${streakCard(summary)}
     `;
 
     const menuCard = container.querySelector('.menu-card');

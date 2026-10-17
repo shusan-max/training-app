@@ -260,7 +260,7 @@ export default {
       return `
         <section class="card exercise-card" data-exercise="${exerciseId}">
           <div class="exercise-head">
-            <h2>${exercise.name}</h2>
+            <h2>${exercise.name}<a class="info-link" href="#exercise/${exerciseId}" aria-label="${exercise.name}のフォームの説明">ⓘ</a></h2>
             ${sets.length === 0 ? `<button type="button" class="icon-btn" data-action="remove-exercise" data-exercise="${exerciseId}" aria-label="${exercise.name}を外す">×</button>` : ''}
           </div>
           <p class="previous">${previousText}</p>

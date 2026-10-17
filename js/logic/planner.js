@@ -90,7 +90,7 @@ function weekInfo(settings, today) {
 }
 
 // トレーニングの種類(記録に無ければ、1〜3回のセットがあれば重い日とみなす)
-function workoutKind(workout, benchSets) {
+export function workoutKind(workout, benchSets) {
   if (workout.type) return workout.type;
   return benchSets.some((s) => !s.isWarmup && s.reps <= 3) ? 'heavy' : 'volume';
 }

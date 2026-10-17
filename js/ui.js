@@ -1,17 +1,5 @@
 // 画面づくりで何度も使う部品をまとめたファイル。
 
-// 「この部分は〇〇で作ります」というカードを作る(まだ作っていない機能の目印)
-export function placeholderCard(title, step, items) {
-  const list = items.map((item) => `<li>${item}</li>`).join('');
-  return `
-    <section class="card placeholder">
-      <span class="badge">${step}で作ります</span>
-      <h2>${title}</h2>
-      <ul>${list}</ul>
-    </section>
-  `;
-}
-
 // 日付を「10月17日(土)」の形にする
 export function formatDateJa(date) {
   return new Intl.DateTimeFormat('ja-JP', {
@@ -71,6 +59,11 @@ export function toast(message) {
 // 重さを「72.5」「70」のように、余計な0をつけずに書く
 export function formatKg(value) {
   return String(Number(value.toFixed(2)));
+}
+
+// 挙げた重さの合計を「12.3トン」「850kg」の形にする
+export function formatVolume(kg) {
+  return kg >= 1000 ? `${(kg / 1000).toFixed(1)}トン` : `${Math.round(kg)}kg`;
 }
 
 // 入力欄の文字を数字に直す。空なら null、数字でなければ NaN

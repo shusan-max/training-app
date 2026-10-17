@@ -102,24 +102,6 @@ body {
   margin: 0 0 12px;
 }
 
-/* 「この画面は〇〇で作ります」の表示 */
-.placeholder ul {
-  margin: 8px 0 0;
-  padding-left: 1.2em;
-  color: var(--text-sub);
-  font-size: 15px;
-}
-.badge {
-  display: inline-block;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 999px;
-  padding: 2px 10px;
-  margin-bottom: 8px;
-}
-
 /* 大きいボタン(親指で押しやすい高さ) */
 .btn {
   display: block;
@@ -981,3 +963,123 @@ a.goal-card {
   font-size: 14px;
   font-weight: 600;
 }
+
+/* ===== 種目の説明 ===== */
+.info-link {
+  margin-left: 6px;
+  color: var(--text-sub);
+  text-decoration: none;
+  font-weight: 400;
+  font-size: 18px;
+}
+.link-button {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+.guide-title { font-size: 22px !important; }
+.guide-section ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+.guide-section li { margin: 6px 0; }
+.summary.stacked div {
+  flex-direction: column;
+  gap: 2px;
+}
+.summary.stacked dd { font-weight: 600; }
+
+/* ===== 継続と積み重ね ===== */
+a.streak-card {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+}
+.streak-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 4px 0 8px;
+  text-align: center;
+}
+.streak-grid > div {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 4px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.streak-grid .big { font-size: 28px; font-weight: 700; line-height: 1.2; }
+.streak-grid .unit { font-size: 13px; font-weight: 700; }
+.streak-grid .cap { font-size: 11px; color: var(--text-sub); }
+
+.stat-row.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat-row.three .stat { padding: 8px; }
+.stat-row.three .stat-value { font-size: 20px; }
+.stat-value small { font-size: 12px; margin-left: 2px; }
+.streak-line {
+  margin: 10px 0 0 !important;
+  font-size: 14px;
+}
+
+/* カレンダー */
+.calendar { margin-top: 12px; }
+.cal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cal-title { font-weight: 700; }
+.cal-head .icon-btn:disabled { opacity: 0.25; }
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.cal-weekday {
+  font-size: 12px;
+  color: var(--text-sub);
+  padding: 4px 0;
+}
+.cal-cell {
+  min-height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 4px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.cal-cell.today { outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+.cal-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-top: 3px;
+  border-radius: 50%;
+}
+.cal-dot.strong { background: var(--accent); }
+.cal-dot.normal { background: var(--series-2); }
+
+/* 自己ベストと記念日 */
+.timeline-title {
+  margin: 16px 0 6px;
+  font-size: 16px;
+}
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.timeline li {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 8px 14px;
+  border-left: 2px solid var(--border);
+}
+.tl-date { font-size: 12px; color: var(--text-sub); }
+.tl-text { font-weight: 600; }

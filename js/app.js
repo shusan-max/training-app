@@ -11,6 +11,7 @@ import settingsScreen from './screens/settings.js';
 import profile from './screens/profile.js';
 import body from './screens/body.js';
 import workout from './screens/workout.js';
+import exerciseDetail from './screens/exercise-detail.js';
 import { initRestTimer } from './rest-timer.js';
 
 // 画面の一覧。新しい画面を足すときはここに1行追加する。
@@ -24,6 +25,7 @@ const screens = {
   profile,
   body,
   workout,
+  exercise: exerciseDetail,
 };
 const DEFAULT_SCREEN = 'today';
 
