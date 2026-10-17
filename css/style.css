@@ -1,0 +1,171 @@
+/* ===== 色やサイズの決まりごと(ここを変えるとアプリ全体の見た目が変わる) ===== */
+:root {
+  --bg: #f5f6f8;          /* 背景 */
+  --surface: #ffffff;     /* カードの背景 */
+  --text: #1b1d22;        /* 文字 */
+  --text-sub: #6b707a;    /* 薄い文字 */
+  --border: #e3e5ea;      /* 区切り線 */
+  --accent: #e8590c;      /* 強調色(オレンジ) */
+  --accent-text: #ffffff; /* 強調色の上の文字 */
+  --accent-soft: #fff0e6; /* 強調色の薄い版 */
+
+  --tabbar-height: 60px;
+  --radius: 14px;
+  --gutter: 16px;
+}
+
+/* スマホがダークモードのときの色 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317;
+    --surface: #1c1f25;
+    --text: #eceef2;
+    --text-sub: #9aa0aa;
+    --border: #2c3038;
+    --accent: #ff7a33;
+    --accent-text: #1b0d04;
+    --accent-soft: #3a2316;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317;
+  --surface: #1c1f25;
+  --text: #eceef2;
+  --text-sub: #9aa0aa;
+  --border: #2c3038;
+  --accent: #ff7a33;
+  --accent-text: #1b0d04;
+  --accent-soft: #3a2316;
+}
+
+/* ===== 全体 ===== */
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== 画面上部のタイトル ===== */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  /* iPhone の上部(時計やカメラの部分)に重ならないよう余白を取る */
+  padding: calc(env(safe-area-inset-top) + 12px) var(--gutter) 8px;
+}
+.app-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+/* ===== 画面の中身 ===== */
+.screen {
+  padding: 8px var(--gutter);
+  /* 下のタブに隠れないよう余白を取る */
+  padding-bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 24px);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* カード(情報のまとまり) */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.card p { margin: 0; }
+
+.sub { color: var(--text-sub); font-size: 14px; }
+
+.date-label {
+  color: var(--text-sub);
+  font-size: 15px;
+  margin: 0 0 12px;
+}
+
+/* 「この画面は〇〇で作ります」の表示 */
+.placeholder ul {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+  color: var(--text-sub);
+  font-size: 15px;
+}
+.badge {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin-bottom: 8px;
+}
+
+/* 大きいボタン(親指で押しやすい高さ) */
+.btn {
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.btn:disabled { opacity: 0.4; }
+
+/* ===== 画面下のタブ ===== */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  /* iPhone 下部のバー(ホームに戻る線)に重ならないよう余白を取る */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.tabbar a {
+  flex: 1;
+  height: var(--tabbar-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-sub);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tabbar svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* 今開いているタブ */
+.tabbar a[aria-current="page"] { color: var(--accent); }
