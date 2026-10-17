@@ -1,9 +1,11 @@
 // 「今日」画面(ホーム)
 import {
   placeholderCard, formatDateJa, formatFullDateJa, daysSince, daysUntil, todayString,
+  formatKg, parseDateString,
 } from '../ui.js';
 import { getBodyLog, summarizeBodyLog } from '../body-data.js';
-import { getAllWorkouts, getSetsForWorkout } from '../workout-data.js';
+import { getAllWorkouts, getSetsForWorkout, getAllSets } from '../workout-data.js';
+import { benchSessions, benchProgress } from '../logic/progress.js';
 
 const BACKUP_REMIND_DAYS = 7;
 
@@ -24,15 +26,22 @@ function backupReminder(settings) {
   `;
 }
 
-function goalCard(goal) {
+function goalCard(goal, progress) {
   const daysLeft = daysUntil(goal.date);
-  const remaining = daysLeft >= 0 ? `あと${daysLeft}日` : '目標日を過ぎました';
+  const remainingDays = daysLeft >= 0 ? `あと${daysLeft}日` : '目標日を過ぎました';
+  let status = '';
+  if (progress.bestActual != null) {
+    status = progress.remaining > 0
+      ? `実際の最高 ${formatKg(progress.bestActual)}kg ・ あと${formatKg(progress.remaining)}kg`
+      : '目標達成!おめでとうございます';
+  }
   return `
-    <section class="card goal-card">
+    <a class="card goal-card" href="#progress">
       <p class="sub">目標</p>
-      <p class="goal-main">ベンチプレス <strong>${goal.weight}kg</strong></p>
-      <p class="sub">${formatFullDateJa(goal.date)}まで ${remaining}</p>
-    </section>
+      <p class="goal-main">ベンチプレス <strong>${formatKg(goal.weight)}kg</strong></p>
+      ${status ? `<p class="goal-status">${status}</p>` : ''}
+      <p class="sub">${formatFullDateJa(goal.date)}まで ${remainingDays}</p>
+    </a>
   `;
 }
 
@@ -93,11 +102,18 @@ function bodyLogCard(log) {
 export default {
   title: '今日',
   async render(container, { settings }) {
-    const [todayLog, trainingHtml] = await Promise.all([getBodyLog(todayString()), workoutCard()]);
+    const [todayLog, trainingHtml, allSets] = await Promise.all([
+      getBodyLog(todayString()), workoutCard(), getAllSets(),
+    ]);
+    const progress = benchProgress(
+      benchSessions(allSets.filter((s) => s.exerciseId === 'bench-press'), settings.benchBaseline),
+      settings.goal,
+      parseDateString(todayString()),
+    );
     container.innerHTML = `
       <p class="date-label">${formatDateJa(new Date())}</p>
       ${backupReminder(settings)}
-      ${goalCard(settings.goal)}
+      ${goalCard(settings.goal, progress)}
       ${trainingHtml}
       ${bodyLogCard(todayLog)}
       ${placeholderCard('今日のメニュー', '⑦', [

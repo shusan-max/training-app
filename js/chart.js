@@ -1,12 +1,12 @@
 // 折れ線グラフを作る部品。
-// 1つのグラフには線を1本だけ描く(単位の違う値は、別々のグラフにする)。
+// 同じ単位の線だけを1つのグラフに描く(単位の違う値は、別々のグラフにする)。
 // 画面を指でなぞると、その日の値が出る。
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const HEIGHT = 180;
+const HEIGHT = 190;
 const PAD = { top: 26, right: 18, bottom: 26, left: 40 };
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MARKER_LIMIT = 20; // 点がこれより少なければ、すべての点に印をつける
+const MARKER_MIN_GAP = 14; // 点と点がこれ(px)以上離れていれば、すべての点に印をつける
 
 function svgEl(name, attrs = {}) {
   const el = document.createElementNS(SVG_NS, name);
@@ -25,12 +25,22 @@ const longDate = (date) => new Intl.DateTimeFormat('ja-JP', {
   month: 'long', day: 'numeric', weekday: 'short',
 }).format(date);
 
+// 線の種類ごとの見た目(css の .chart-line, .chart-line.alt などと対応)
+const VARIANT_CLASS = {
+  main: '',          // 実線(オレンジ)
+  alt: ' alt',       // 点線(青)
+  projection: ' projection', // 予想の線(灰色の細い点線)
+};
+
 /**
  * host: グラフを入れる場所(div)
- * points: [{ date: Date, value: 数 }] 日付の古い順
+ * series: [{ label, points: [{ date, value }], variant: 'main' | 'alt' | 'projection' }]
+ * references: [{ label, value }] 目標などの横線
  * xMin, xMax: 横軸の始まりと終わり(Date)
  */
-export function createLineChart(host, { points, unit, label, xMin, xMax, decimals = 1 }) {
+export function createLineChart(host, {
+  series, unit, label, xMin, xMax, references = [], decimals = 1,
+}) {
   host.replaceChildren();
   host.classList.add('chart');
 
@@ -38,11 +48,15 @@ export function createLineChart(host, { points, unit, label, xMin, xMax, decimal
   const plotW = width - PAD.left - PAD.right;
   const plotH = HEIGHT - PAD.top - PAD.bottom;
 
-  // 縦軸の範囲:値の上下に少し余白をとり、きりのいい数にそろえる
-  const values = points.map((p) => p.value);
+  // 縦軸の範囲:値と目標線が入るように、上下に少し余白をとって、きりのいい数にそろえる
+  // (予想の線は範囲に入れず、はみ出した分は切る)
+  const values = [
+    ...series.filter((s) => s.variant !== 'projection').flatMap((s) => s.points.map((p) => p.value)),
+    ...references.map((r) => r.value),
+  ];
   const lo = Math.min(...values);
   const hi = Math.max(...values);
-  const margin = Math.max((hi - lo) * 0.2, 0.5);
+  const margin = Math.max((hi - lo) * 0.15, 0.5);
   const step = niceStep(hi - lo + margin * 2);
   const yMin = Math.floor((lo - margin) / step) * step;
   const yMax = Math.ceil((hi + margin) / step) * step;
@@ -53,13 +67,12 @@ export function createLineChart(host, { points, unit, label, xMin, xMax, decimal
   const xOf = (date) => PAD.left + ((date.getTime() - x0) / (x1 - x0)) * plotW;
   const yOf = (value) => PAD.top + (1 - (value - yMin) / (yMax - yMin)) * plotH;
 
-  const latest = points[points.length - 1];
   const svg = svgEl('svg', {
     viewBox: `0 0 ${width} ${HEIGHT}`,
     width,
     height: HEIGHT,
     role: 'img',
-    'aria-label': `${label}のグラフ。最新は${latest.value.toFixed(decimals)}${unit}`,
+    'aria-label': `${label}のグラフ`,
   });
 
   // 横線と縦軸の数字
@@ -78,43 +91,86 @@ export function createLineChart(host, { points, unit, label, xMin, xMax, decimal
     svg.append(text);
   });
 
-  // 線
-  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(p.date).toFixed(1)},${yOf(p.value).toFixed(1)}`).join(' ');
-  svg.append(svgEl('path', { d, class: 'chart-line' }));
+  // 目標などの横線
+  references.forEach((ref) => {
+    const y = yOf(ref.value);
+    svg.append(svgEl('line', { x1: PAD.left, x2: width - PAD.right, y1: y, y2: y, class: 'chart-ref' }));
+    const text = svgEl('text', { x: width - PAD.right, y: y - 5, class: 'chart-ref-label', 'text-anchor': 'end' });
+    text.textContent = ref.label;
+    svg.append(text);
+  });
 
-  // 点の印(点が多いときは最新の点だけ)
-  const marked = points.length <= MARKER_LIMIT ? points : [latest];
-  marked.forEach((p) => {
-    svg.append(svgEl('circle', { cx: xOf(p.date), cy: yOf(p.value), r: 4, class: 'chart-dot' }));
+  // グラフの枠からはみ出した部分を切るための形
+  const clipId = `clip-${Math.random().toString(36).slice(2)}`;
+  const clip = svgEl('clipPath', { id: clipId });
+  clip.append(svgEl('rect', { x: PAD.left, y: PAD.top, width: plotW, height: plotH }));
+  svg.append(clip);
+
+  // 線と点
+  series.forEach((s) => {
+    const variant = VARIANT_CLASS[s.variant ?? 'main'];
+    if (s.points.length >= 2) {
+      const d = s.points
+        .map((p, i) => `${i === 0 ? 'M' : 'L'}${xOf(p.date).toFixed(1)},${yOf(p.value).toFixed(1)}`)
+        .join(' ');
+      svg.append(svgEl('path', { d, class: `chart-line${variant}`, 'clip-path': `url(#${clipId})` }));
+    }
+    if (s.variant === 'projection') return;
+    // 点が混み合っていると線が隠れるので、そのときは最新の点だけに印をつける
+    const xs = s.points.map((p) => xOf(p.date));
+    const roomy = xs.every((x, i) => i === 0 || x - xs[i - 1] >= MARKER_MIN_GAP);
+    const marked = roomy ? s.points : s.points.slice(-1);
+    marked.forEach((p) => {
+      svg.append(svgEl('circle', { cx: xOf(p.date), cy: yOf(p.value), r: 4, class: `chart-dot${variant}` }));
+    });
   });
 
   // 指でなぞったときの縦線と印
+  const tipSeries = series.filter((s) => s.variant !== 'projection');
   const cross = svgEl('line', { y1: PAD.top, y2: PAD.top + plotH, class: 'chart-cross', visibility: 'hidden' });
-  const focus = svgEl('circle', { r: 5, class: 'chart-dot', visibility: 'hidden' });
-  svg.append(cross, focus);
+  svg.append(cross);
+  const focusDots = tipSeries.map((s) => {
+    const dot = svgEl('circle', { r: 5, class: `chart-dot${VARIANT_CLASS[s.variant ?? 'main']}`, visibility: 'hidden' });
+    svg.append(dot);
+    return dot;
+  });
+
+  const tipDates = [...new Set(tipSeries.flatMap((s) => s.points.map((p) => p.date.getTime())))];
 
   const tooltip = document.createElement('div');
   tooltip.className = 'chart-tooltip';
   tooltip.hidden = true;
 
   function showAt(clientX) {
+    if (tipDates.length === 0) return;
     const rect = svg.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * width;
-    // 指の位置に一番近い点を探す
-    let nearest = points[0];
-    for (const p of points) {
-      if (Math.abs(xOf(p.date) - x) < Math.abs(xOf(nearest.date) - x)) nearest = p;
+    // 指の位置に一番近い日を探す
+    let nearest = tipDates[0];
+    for (const t of tipDates) {
+      if (Math.abs(xOf(new Date(t)) - x) < Math.abs(xOf(new Date(nearest)) - x)) nearest = t;
     }
-    const px = xOf(nearest.date);
-    const py = yOf(nearest.value);
+    const px = xOf(new Date(nearest));
     cross.setAttribute('x1', px);
     cross.setAttribute('x2', px);
-    focus.setAttribute('cx', px);
-    focus.setAttribute('cy', py);
     cross.setAttribute('visibility', 'visible');
-    focus.setAttribute('visibility', 'visible');
 
-    tooltip.innerHTML = `<span>${longDate(nearest.date)}</span><strong>${nearest.value.toFixed(decimals)}${unit}</strong>`;
+    const lines = [];
+    tipSeries.forEach((s, i) => {
+      const point = s.points.find((p) => p.date.getTime() === nearest);
+      const dot = focusDots[i];
+      if (!point) {
+        dot.setAttribute('visibility', 'hidden');
+        return;
+      }
+      dot.setAttribute('cx', px);
+      dot.setAttribute('cy', yOf(point.value));
+      dot.setAttribute('visibility', 'visible');
+      const value = `${point.value.toFixed(decimals)}${unit}`;
+      lines.push(tipSeries.length > 1 ? `<span>${s.label} <strong>${value}</strong></span>` : `<strong>${value}</strong>`);
+    });
+
+    tooltip.innerHTML = `<span>${longDate(new Date(nearest))}</span>${lines.join('')}`;
     tooltip.hidden = false;
     const left = (px / width) * rect.width;
     const half = tooltip.offsetWidth / 2;
@@ -123,7 +179,7 @@ export function createLineChart(host, { points, unit, label, xMin, xMax, decimal
 
   function hide() {
     cross.setAttribute('visibility', 'hidden');
-    focus.setAttribute('visibility', 'hidden');
+    focusDots.forEach((dot) => dot.setAttribute('visibility', 'hidden'));
     tooltip.hidden = true;
   }
 
@@ -136,5 +192,22 @@ export function createLineChart(host, { points, unit, label, xMin, xMax, decimal
   });
 
   host.append(svg, tooltip);
+
+  // 線が2本以上・目標線があるときは、何の線かの説明(凡例)をつける
+  if (series.length > 1 || references.length) {
+    const legend = document.createElement('div');
+    legend.className = 'chart-legend';
+    const item = (cls, text) => `
+      <span class="legend-item">
+        <svg viewBox="0 0 24 10" aria-hidden="true"><line x1="1" x2="23" y1="5" y2="5" class="${cls}"/></svg>${text}
+      </span>
+    `;
+    legend.innerHTML = [
+      ...series.map((s) => item(`chart-line${VARIANT_CLASS[s.variant ?? 'main']}`, s.label)),
+      ...references.map((r) => item('chart-ref', r.label)),
+    ].join('');
+    host.append(legend);
+  }
+
   return { hide };
 }
