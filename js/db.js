@@ -71,6 +71,12 @@ export async function getAll(storeName) {
   return requestDone(db.transaction(storeName).objectStore(storeName).getAll());
 }
 
+// 探しやすくするための項目(indexes)で探す。例:あるトレーニングのセットを全部
+export async function getAllByIndex(storeName, indexName, value) {
+  const db = await openDb();
+  return requestDone(db.transaction(storeName).objectStore(storeName).index(indexName).getAll(value));
+}
+
 // 1件保存する(同じ見分け番号があれば上書き)
 export async function put(storeName, value) {
   const db = await openDb();
@@ -85,6 +91,15 @@ export async function remove(storeName, key) {
   const db = await openDb();
   const tx = db.transaction(storeName, 'readwrite');
   tx.objectStore(storeName).delete(key);
+  await transactionDone(tx);
+}
+
+// まとめて消す
+export async function removeMany(storeName, keys) {
+  const db = await openDb();
+  const tx = db.transaction(storeName, 'readwrite');
+  const store = tx.objectStore(storeName);
+  keys.forEach((key) => store.delete(key));
   await transactionDone(tx);
 }
 

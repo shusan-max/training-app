@@ -68,6 +68,11 @@ export function toast(message) {
   setTimeout(() => el.remove(), 2500);
 }
 
+// 重さを「72.5」「70」のように、余計な0をつけずに書く
+export function formatKg(value) {
+  return String(Number(value.toFixed(2)));
+}
+
 // 入力欄の文字を数字に直す。空なら null、数字でなければ NaN
 export function parseNumber(text) {
   const trimmed = String(text).trim();

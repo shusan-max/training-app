@@ -5,6 +5,7 @@ import {
   getBodyLog, getAllBodyLogs, saveBodyLog, deleteBodyLog, latestValue,
 } from '../body-data.js';
 import { todayString, parseNumber, toast } from '../ui.js';
+import { stepperHtml, bindSteppers } from '../stepper.js';
 
 // ±ボタンで増減する項目
 const STEPPERS = [
@@ -13,18 +14,8 @@ const STEPPERS = [
   { name: 'sleepHours', label: '睡眠時間', unit: '時間', step: 0.5, min: 0, max: 24 },
 ];
 
-function stepperHtml({ name, label, unit }, previous) {
-  const hint = previous != null ? `前回 ${Number(previous.toFixed(1))}${unit}` : '';
-  return `
-    <div class="field">
-      <span class="field-label">${label}<span class="hint">${hint}</span></span>
-      <div class="stepper" data-name="${name}">
-        <button type="button" class="step-btn" data-dir="-1" aria-label="${label}を減らす">−</button>
-        <span class="input-unit"><input name="${name}" type="number" inputmode="decimal" step="any" aria-label="${label}"><span>${unit}</span></span>
-        <button type="button" class="step-btn" data-dir="1" aria-label="${label}を増やす">+</button>
-      </div>
-    </div>
-  `;
+function previousHint(value, unit) {
+  return value != null ? `前回 ${Number(value.toFixed(1))}${unit}` : '';
 }
 
 export default {
@@ -67,7 +58,7 @@ export default {
         </section>
 
         <section class="card">
-          ${STEPPERS.map((s) => stepperHtml(s, previous[s.name])).join('')}
+          ${STEPPERS.map((s) => stepperHtml({ ...s, hint: previousHint(previous[s.name], s.unit) })).join('')}
         </section>
 
         <section class="card">
@@ -109,25 +100,8 @@ export default {
       if (f.date.value) location.hash = `#body/${f.date.value}`;
     });
 
-    // ±ボタン
-    form.querySelectorAll('.stepper').forEach((stepper) => {
-      const def = STEPPERS.find((s) => s.name === stepper.dataset.name);
-      const input = stepper.querySelector('input');
-      stepper.querySelectorAll('.step-btn').forEach((button) => {
-        button.addEventListener('click', () => {
-          const current = parseNumber(input.value);
-          let next;
-          if (current === null || Number.isNaN(current)) {
-            // 空のときは、まず前回の値を入れる
-            next = startValue[def.name] ?? 0;
-          } else {
-            next = current + Number(button.dataset.dir) * def.step;
-          }
-          next = Math.min(def.max, Math.max(def.min, Math.round(next * 10) / 10));
-          input.value = next;
-        });
-      });
-    });
+    // ±ボタン(空のときは、まず前回の値を入れる)
+    bindSteppers(form, STEPPERS.map((s) => ({ ...s, start: startValue[s.name] })));
 
     // 疲労度:もう一度押すと選択を外す
     const fatigueGroup = form.querySelector('.segmented');

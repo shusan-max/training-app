@@ -10,6 +10,8 @@ import exercises from './screens/exercises.js';
 import settingsScreen from './screens/settings.js';
 import profile from './screens/profile.js';
 import body from './screens/body.js';
+import workout from './screens/workout.js';
+import { initRestTimer } from './rest-timer.js';
 
 // 画面の一覧。新しい画面を足すときはここに1行追加する。
 // (#の後ろの名前: 画面のファイル)
@@ -21,11 +23,14 @@ const screens = {
   settings: settingsScreen,
   profile,
   body,
+  workout,
 };
 const DEFAULT_SCREEN = 'today';
 
 // タブを素早く続けて押したとき、古い画面が後から表示されないようにするための番号
 let renderCount = 0;
+// 今出している画面(ほかの画面に移るとき、後片付け leave() を呼ぶため)
+let currentScreen = null;
 
 async function showScreen() {
   const myRender = ++renderCount;
@@ -53,6 +58,8 @@ async function showScreen() {
     document.body.classList.toggle('setup-mode', !settings);
     document.getElementById('screen-title').textContent = screen.title;
 
+    currentScreen?.leave?.();
+    currentScreen = screen;
     container.replaceChildren();
     await screen.render(container, { settings, params, refresh: showScreen });
 
@@ -78,6 +85,7 @@ async function showScreen() {
   }
 }
 
+initRestTimer();
 window.addEventListener('hashchange', showScreen);
 showScreen();
 
