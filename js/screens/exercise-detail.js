@@ -1,9 +1,11 @@
 // 種目の説明画面(#exercise/bench-press など)
-import { getExercise } from '../data/exercises.js';
+import { getExercise, recordType, RECORD_TYPES } from '../data/exercises.js';
 import { GUIDES } from '../data/exercise-guides.js';
 import { getAllSets, formatSet, formatSetList } from '../workout-data.js';
+import { deleteCustomExercise } from '../exercise-data.js';
+import { openExerciseForm } from '../exercise-form.js';
 import { bestEstimate } from '../logic/e1rm.js';
-import { formatDateJa, parseDateString } from '../ui.js';
+import { formatDateJa, parseDateString, toast, escapeHtml } from '../ui.js';
 
 // あなたのこれまでの記録(前回と自己ベスト)
 function myRecordHtml(exercise, sets) {
@@ -11,14 +13,21 @@ function myRecordHtml(exercise, sets) {
   if (mine.length === 0) return '<p class="sub">まだ記録がありません</p>';
   const lastDate = mine[mine.length - 1].date;
   const last = mine.filter((s) => s.date === lastDate);
-  const heaviest = mine.reduce((best, s) => (s.weight > best.weight || (s.weight === best.weight && s.reps > best.reps) ? s : best));
   const rows = [
     `<div><dt>前回(${formatDateJa(parseDateString(lastDate))})</dt><dd>${formatSetList(last, exercise)}</dd></div>`,
   ];
-  if (exercise.equipment !== 'bodyweight') {
+  const record = recordType(exercise);
+  if (record === 'weight') {
+    const heaviest = mine.reduce((best, s) => (s.weight > best.weight || (s.weight === best.weight && s.reps > best.reps) ? s : best));
     rows.push(`<div><dt>一番重い記録</dt><dd>${formatSet(heaviest, exercise)}</dd></div>`);
     const best = bestEstimate(mine);
     if (best) rows.push(`<div><dt>推定MAXの最高</dt><dd>${best.value.toFixed(1)}kg</dd></div>`);
+  } else if (record === 'cardio') {
+    const longest = mine.reduce((best, s) => ((s.distanceKm ?? 0) > (best.distanceKm ?? 0) ? s : best));
+    if (longest.distanceKm) rows.push(`<div><dt>一番長い距離</dt><dd>${formatSet(longest, exercise)}</dd></div>`);
+  } else if (record === 'time') {
+    const longest = mine.reduce((best, s) => ((s.durationSec ?? 0) > (best.durationSec ?? 0) ? s : best));
+    rows.push(`<div><dt>一番長い時間</dt><dd>${formatSet(longest, exercise)}</dd></div>`);
   }
   return `<dl class="summary stacked">${rows.join('')}</dl>`;
 }
@@ -26,10 +35,12 @@ function myRecordHtml(exercise, sets) {
 export default {
   title: '種目の説明',
   tab: 'exercises',
-  async render(container, { params }) {
+  async render(container, { params, refresh }) {
     const exercise = getExercise(params[0]);
     const guide = GUIDES[exercise.id];
+    const muscles = guide?.muscles ?? exercise.muscles;
     const sets = await getAllSets();
+    const recordLabel = RECORD_TYPES.find(([r]) => r === recordType(exercise))?.[1];
 
     const sections = (guide?.sections ?? []).map((section) => `
       <section class="card guide-section">
@@ -41,18 +52,25 @@ export default {
     container.innerHTML = `
       <button type="button" class="back-link link-button" data-action="back">‹ 戻る</button>
       <section class="card">
-        <h2 class="guide-title">${exercise.name}</h2>
-        ${guide ? `
+        <h2 class="guide-title">${escapeHtml(exercise.name)}${exercise.custom ? '<span class="custom-tag">自作</span>' : ''}</h2>
+        ${muscles ? `
           <p class="field-label">効く部位</p>
-          <ul class="tag-list">${guide.muscles.map((m) => `<li>${m}</li>`).join('')}</ul>
+          <ul class="tag-list">${muscles.map((m) => `<li>${m}</li>`).join('')}</ul>
         ` : ''}
+        <p class="sub" style="margin-top:8px">記録のしかた:${recordLabel}</p>
       </section>
-      ${sections}
+      ${sections || '<section class="card"><p class="sub">この種目の文章の説明はまだありません。</p></section>'}
       <section class="card">
         <h2>あなたの記録</h2>
         ${myRecordHtml(exercise, sets)}
       </section>
-      <section class="card notice">
+      ${exercise.custom ? `
+        <div class="button-stack">
+          <button type="button" class="btn btn-secondary" data-action="edit">この種目を直す</button>
+          <button type="button" class="btn btn-danger" data-action="delete">この種目を消す</button>
+        </div>
+      ` : ''}
+      <section class="card notice" style="margin-top:12px">
         <p>痛みが出たら中止してください。痛みが続くときは、医療機関に相談しましょう。</p>
       </section>
     `;
@@ -64,6 +82,17 @@ export default {
       } else {
         location.hash = '#exercises';
       }
+    });
+
+    container.querySelector('[data-action="edit"]')?.addEventListener('click', () => {
+      openExerciseForm({ exercise, onSaved: () => { toast('保存しました'); refresh(); } });
+    });
+
+    container.querySelector('[data-action="delete"]')?.addEventListener('click', async () => {
+      if (!confirm(`「${exercise.name}」を消します。よろしいですか?\n(記録がある場合、記録はそのまま残ります)`)) return;
+      await deleteCustomExercise(exercise);
+      toast('消しました');
+      location.hash = '#exercises';
     });
   },
 };

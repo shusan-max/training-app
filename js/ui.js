@@ -80,6 +80,11 @@ export function isInstalledApp() {
   return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 }
 
+// 自分で入れた文字(種目名など)を、画面に安全に出せる形にする
+export function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // 挙げた重さの合計を「12.3トン」「850kg」の形にする
 export function formatVolume(kg) {
   return kg >= 1000 ? `${(kg / 1000).toFixed(1)}トン` : `${Math.round(kg)}kg`;

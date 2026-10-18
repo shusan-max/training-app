@@ -120,7 +120,7 @@ export function summarizeHistory({ workouts, sets, bodyLogs, baseline, today }) 
   // ----- 累計 -----
   const counted = sets.filter((s) => !s.isWarmup && setsByWorkout.has(s.workoutId));
   const totalSets = counted.length;
-  const totalVolume = counted.reduce((sum, s) => sum + s.weight * s.reps, 0);
+  const totalVolume = counted.reduce((sum, s) => sum + (s.weight || 0) * (s.reps || 0), 0);
 
   // ----- 自己ベストの年表 -----
   const timeline = [];

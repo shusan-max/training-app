@@ -1,5 +1,7 @@
 // 「記録」画面
-import { formatDateJa, parseDateString, todayString, formatVolume } from '../ui.js';
+import {
+  formatDateJa, parseDateString, todayString, formatVolume, escapeHtml,
+} from '../ui.js';
 import { summarizeHistory } from '../logic/streaks.js';
 import { createCalendar } from '../calendar.js';
 import { getAllBodyLogs, summarizeBodyLog } from '../body-data.js';
@@ -24,7 +26,7 @@ function listRow(href, date, summary) {
 function workoutSummary(workout, sets) {
   const names = workout.exerciseIds
     .filter((id) => sets.some((s) => s.exerciseId === id))
-    .map((id) => getExercise(id).name);
+    .map((id) => escapeHtml(getExercise(id).name));
   const parts = [names.join('・'), `${sets.filter((s) => !s.isWarmup).length}セット`];
   const bench = bestEstimate(sets.filter((s) => s.exerciseId === 'bench-press'));
   if (bench) parts.push(`ベンチ推定MAX ${bench.value.toFixed(1)}kg`);

@@ -1401,3 +1401,44 @@ a.install-hint {
 }
 .menu-tag { background: var(--surface); }
 .home-mode .stat-row { margin: 0 0 12px; }
+
+/* ===== 種目の追加・自作 ===== */
+.sheet-tools {
+  display: grid;
+  gap: 8px;
+  padding: 4px var(--gutter) 8px;
+}
+.sheet-tools .btn { min-height: 44px; font-size: 15px; }
+.list-tools {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+input[type="search"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.custom-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  vertical-align: 2px;
+}
+.sheet .form .field:first-child { margin-top: 0; }
+.sheet .form .btn { margin-top: 14px; }
+.record-hint { margin-top: 8px !important; }

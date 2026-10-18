@@ -6,12 +6,17 @@ import {
   getSetsForWorkout, saveSet, deleteSet, getPreviousSets, formatSet, formatSetList,
 } from '../workout-data.js';
 import { describeSteps, DAY_TYPES } from '../logic/planner.js';
-import { CATEGORIES, EXERCISES, getExercise, weightStep, weightLabel } from '../data/exercises.js';
+import {
+  CATEGORIES, allExercises, getExercise, weightStep, weightLabel, recordType,
+} from '../data/exercises.js';
+import { openExerciseForm } from '../exercise-form.js';
 import { bestEstimate, describeEstimate } from '../logic/e1rm.js';
 import { startRest, stopRest, unlockAudio } from '../rest-timer.js';
 import { stepperHtml, bindSteppers } from '../stepper.js';
 import { newId } from '../db.js';
-import { formatDateJa, formatKg, parseDateString, parseNumber, todayString, toast } from '../ui.js';
+import {
+  formatDateJa, formatKg, parseDateString, parseNumber, todayString, toast, escapeHtml,
+} from '../ui.js';
 
 // 「あと何回できたか」の選択肢(3は「3回以上」)
 const RIR_OPTIONS = [[0, '0'], [1, '1'], [2, '2'], [3, '3+']];
@@ -33,14 +38,8 @@ function onVisibilityChange() {
 }
 
 // ===== 種目を選ぶ画面(下から出てくる) =====
-function openExercisePicker(alreadyAdded, onPick) {
-  const groups = CATEGORIES.map(([category, label]) => {
-    const buttons = EXERCISES.filter((e) => e.category === category).map((e) => `
-      <button type="button" class="pick" data-id="${e.id}" ${alreadyAdded.includes(e.id) ? 'disabled' : ''}>${e.name}</button>
-    `).join('');
-    return `<h3>${label}</h3><div class="pick-list">${buttons}</div>`;
-  }).join('');
 
+function openExercisePicker(alreadyAdded, onPick) {
   const backdrop = document.createElement('div');
   backdrop.className = 'sheet-backdrop';
   backdrop.innerHTML = `
@@ -49,13 +48,42 @@ function openExercisePicker(alreadyAdded, onPick) {
         <h2>種目を追加</h2>
         <button type="button" class="icon-btn" data-close aria-label="閉じる">×</button>
       </div>
-      <div class="sheet-body">${groups}</div>
+      <div class="sheet-tools">
+        <input type="search" class="pick-search" placeholder="種目名でさがす" aria-label="種目名でさがす">
+        <button type="button" class="btn btn-secondary" data-action="create">+ 自分で種目を作る</button>
+      </div>
+      <div class="sheet-body pick-groups"></div>
     </div>
   `;
+
+  // さがす文字に合う種目だけを、部位ごとに並べる
+  function drawList(query = '') {
+    const q = query.trim();
+    const groups = CATEGORIES.map(([category, label]) => {
+      const items = allExercises().filter((e) => e.category === category && (!q || e.name.includes(q)));
+      if (items.length === 0) return '';
+      const buttons = items.map((e) => `
+        <button type="button" class="pick" data-id="${e.id}" ${alreadyAdded.includes(e.id) ? 'disabled' : ''}>
+          ${escapeHtml(e.name)}${e.custom ? '<span class="custom-tag">自作</span>' : ''}
+        </button>
+      `).join('');
+      return `<h3>${label}</h3><div class="pick-list">${buttons}</div>`;
+    }).join('');
+    backdrop.querySelector('.pick-groups').innerHTML = groups
+      || '<p class="sub">見つかりません。「+ 自分で種目を作る」から作れます。</p>';
+  }
+  drawList();
+
   const close = () => backdrop.remove();
+  backdrop.querySelector('.pick-search').addEventListener('input', (event) => drawList(event.target.value));
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop || event.target.closest('[data-close]')) {
       close();
+      return;
+    }
+    if (event.target.closest('[data-action="create"]')) {
+      close();
+      openExerciseForm({ onSaved: (exercise) => onPick(exercise.id) });
       return;
     }
     const pick = event.target.closest('.pick');
@@ -139,6 +167,19 @@ export default {
       document.addEventListener('visibilitychange', onVisibilityChange, { signal });
     }
 
+    // 記録したセットを、入力欄の値の形にする
+    function setToDraft(set) {
+      return {
+        weight: set.weight ?? null,
+        reps: set.reps ?? null,
+        rir: set.rir ?? null,
+        warmup: Boolean(set.isWarmup),
+        minutes: set.durationSec != null ? Number((set.durationSec / 60).toFixed(1)) : null,
+        distance: set.distanceKm ?? null,
+        seconds: set.durationSec ?? null,
+      };
+    }
+
     // 入力欄の最初の値:メニューの次のセット → 今日の最後のセット → 前回の最初のセット → 空
     function draftFor(exercise) {
       if (state.drafts[exercise.id]) return state.drafts[exercise.id];
@@ -148,9 +189,28 @@ export default {
       if (next) {
         return { weight: next.weight ?? last?.weight ?? null, reps: next.reps, rir: null, warmup: next.isWarmup };
       }
-      if (last) return { weight: last.weight, reps: last.reps, rir: null, warmup: false };
-      return { weight: exercise.equipment === 'bodyweight' ? 0 : null, reps: null, rir: null, warmup: false };
+      if (last) return { ...setToDraft(last), rir: null, warmup: false };
+      return { weight: recordType(exercise) === 'bodyweight' ? 0 : null, reps: null, rir: null, warmup: false };
     }
+
+    // 記録のしかたごとの入力欄(±ボタンの刻み、空のときに入る値など)
+    function inputDefs(exercise, draft) {
+      switch (recordType(exercise)) {
+        case 'cardio':
+          return [
+            { name: 'minutes', label: '時間', unit: '分', step: 1, min: 1, max: 600, start: draft.minutes ?? 20 },
+            { name: 'distance', label: '距離(任意)', unit: 'km', step: 0.1, min: 0, max: 100, start: draft.distance ?? 3 },
+          ];
+        case 'time':
+          return [{ name: 'seconds', label: '時間', unit: '秒', step: 5, min: 5, max: 3600, start: draft.seconds ?? 30 }];
+        default:
+          return [
+            { name: 'weight', label: weightLabel(exercise), unit: 'kg', step: weightStep(exercise, settings), min: 0, max: 500, start: draft.weight ?? 20 },
+            { name: 'reps', label: '回数', unit: '回', step: 1, min: 1, max: 100, start: draft.reps ?? 5 },
+          ];
+      }
+    }
+    const usesReps = (exercise) => ['weight', 'bodyweight'].includes(recordType(exercise));
 
     // 入力欄の見出し(例:「次:ウォームアップ 2/5」)
     function panelTitle(exerciseId) {
@@ -197,25 +257,24 @@ export default {
     }
 
     function panelHtml(exercise, editing) {
-      const draft = editing
-        ? { weight: editing.weight, reps: editing.reps, rir: editing.rir, warmup: editing.isWarmup }
-        : draftFor(exercise);
+      const draft = editing ? setToDraft(editing) : draftFor(exercise);
       const rirButtons = RIR_OPTIONS.map(([value, label]) => `
         <button type="button" role="radio" aria-checked="${draft.rir === value}" data-rir="${value}"><strong>${label}</strong></button>
       `).join('');
       return `
         <div class="set-panel">
           <p class="panel-title">${editing ? 'セットを直す' : panelTitle(exercise.id)}</p>
-          ${stepperHtml({ name: 'weight', label: weightLabel(exercise), unit: 'kg' })}
-          ${stepperHtml({ name: 'reps', label: '回数', unit: '回' })}
-          <div class="field">
-            <span class="field-label">あと何回できそうだった?(任意)</span>
-            <div class="segmented rir" role="radiogroup" aria-label="あと何回できたか">${rirButtons}</div>
-          </div>
-          <label class="check">
-            <input type="checkbox" name="warmup" ${draft.warmup ? 'checked' : ''}>
-            <span>ウォームアップのセット</span>
-          </label>
+          ${inputDefs(exercise, draft).map(stepperHtml).join('')}
+          ${usesReps(exercise) ? `
+            <div class="field">
+              <span class="field-label">あと何回できそうだった?(任意)</span>
+              <div class="segmented rir" role="radiogroup" aria-label="あと何回できたか">${rirButtons}</div>
+            </div>
+            <label class="check">
+              <input type="checkbox" name="warmup" ${draft.warmup ? 'checked' : ''}>
+              <span>ウォームアップのセット</span>
+            </label>
+          ` : ''}
           <button type="button" class="btn" data-action="save-set">${editing ? '直す' : '記録する'}</button>
           ${editing ? `
             <div class="button-row">
@@ -247,7 +306,7 @@ export default {
       const isActive = state.active === exerciseId;
 
       let estimateHtml = '';
-      const best = exercise.equipment === 'bodyweight' ? null : bestEstimate(sets);
+      const best = recordType(exercise) === 'weight' ? bestEstimate(sets) : null;
       if (best) {
         estimateHtml = `
           <div class="estimate">
@@ -260,8 +319,8 @@ export default {
       return `
         <section class="card exercise-card" data-exercise="${exerciseId}">
           <div class="exercise-head">
-            <h2>${exercise.name}<a class="info-link" href="#exercise/${exerciseId}" aria-label="${exercise.name}のフォームの説明">ⓘ</a></h2>
-            ${sets.length === 0 ? `<button type="button" class="icon-btn" data-action="remove-exercise" data-exercise="${exerciseId}" aria-label="${exercise.name}を外す">×</button>` : ''}
+            <h2>${escapeHtml(exercise.name)}<a class="info-link" href="#exercise/${exerciseId}" aria-label="${escapeHtml(exercise.name)}のフォームの説明">ⓘ</a></h2>
+            ${sets.length === 0 ? `<button type="button" class="icon-btn" data-action="remove-exercise" data-exercise="${exerciseId}" aria-label="${escapeHtml(exercise.name)}を外す">×</button>` : ''}
           </div>
           <p class="previous">${previousText}</p>
           ${planLinesHtml(exercise)}
@@ -301,26 +360,57 @@ export default {
       if (panel) {
         const exercise = getExercise(state.active);
         const editing = state.sets.find((s) => s.id === state.editingSetId);
-        const draft = editing ? { weight: editing.weight, reps: editing.reps } : draftFor(exercise);
-        panel.querySelector('[name="weight"]').value = draft.weight ?? '';
-        panel.querySelector('[name="reps"]').value = draft.reps ?? '';
-        bindSteppers(panel, [
-          { name: 'weight', step: weightStep(exercise, settings), min: 0, max: 500, start: draft.weight ?? 20 },
-          { name: 'reps', step: 1, min: 1, max: 100, start: draft.reps ?? 5 },
-        ]);
+        const draft = editing ? setToDraft(editing) : draftFor(exercise);
+        const defs = inputDefs(exercise, draft);
+        defs.forEach((def) => {
+          panel.querySelector(`[name="${def.name}"]`).value = draft[def.name] ?? '';
+        });
+        bindSteppers(panel, defs);
       }
     }
 
-    // 入力欄の値を読む
+    // 入力欄の値を読む(その種目に無い欄は null)
     function readPanel() {
       const panel = container.querySelector('.set-panel');
+      const read = (name) => {
+        const input = panel.querySelector(`[name="${name}"]`);
+        return input ? parseNumber(input.value) : null;
+      };
       const checked = panel.querySelector('.rir [aria-checked="true"]');
       return {
-        weight: parseNumber(panel.querySelector('[name="weight"]').value),
-        reps: parseNumber(panel.querySelector('[name="reps"]').value),
+        weight: read('weight'),
+        reps: read('reps'),
+        minutes: read('minutes'),
+        distance: read('distance'),
+        seconds: read('seconds'),
         rir: checked ? Number(checked.dataset.rir) : null,
-        warmup: panel.querySelector('[name="warmup"]').checked,
+        warmup: panel.querySelector('[name="warmup"]')?.checked ?? false,
       };
+    }
+
+    // 入力をチェックして、保存する項目にする。おかしければ { error }
+    function toSetFields(exercise, v) {
+      const bad = (n) => n === null || Number.isNaN(n);
+      switch (recordType(exercise)) {
+        case 'cardio':
+          if (bad(v.minutes) || v.minutes <= 0) return { error: '時間(分)を入れてください' };
+          if (v.distance !== null && (Number.isNaN(v.distance) || v.distance < 0)) return { error: '距離を正しく入れてください' };
+          return {
+            fields: {
+              weight: null, reps: null, rir: null, isWarmup: false,
+              durationSec: Math.round(v.minutes * 60), distanceKm: v.distance || null,
+            },
+          };
+        case 'time':
+          if (bad(v.seconds) || v.seconds <= 0) return { error: '時間(秒)を入れてください' };
+          return { fields: { weight: null, reps: null, rir: null, isWarmup: false, durationSec: Math.round(v.seconds) } };
+        default: {
+          const weight = recordType(exercise) === 'bodyweight' && v.weight === null ? 0 : v.weight;
+          if (bad(weight) || weight < 0 || weight > 500) return { error: '重さを入れてください' };
+          if (!Number.isInteger(v.reps) || v.reps < 1 || v.reps > 100) return { error: '回数を1以上の整数で入れてください' };
+          return { fields: { weight, reps: v.reps, rir: v.rir, isWarmup: v.warmup } };
+        }
+      }
     }
 
     // 入力途中の値を覚えておく(ほかの種目に切り替えても消えないように)
@@ -355,17 +445,15 @@ export default {
       if (action === 'save-set') {
         unlockAudio(); // ボタンを押した瞬間に音の準備(iPhone のため)
         const values = readPanel();
-        if (values.weight === null || Number.isNaN(values.weight) || values.weight < 0 || values.weight > 500) {
-          toast('重さを入れてください');
-          return;
-        }
-        if (!Number.isInteger(values.reps) || values.reps < 1 || values.reps > 100) {
-          toast('回数を1以上の整数で入れてください');
+        const activeExercise = getExercise(state.active);
+        const checked = toSetFields(activeExercise, values);
+        if (checked.error) {
+          toast(checked.error);
           return;
         }
         const editing = state.sets.find((s) => s.id === state.editingSetId);
         if (editing) {
-          await saveSet({ ...editing, weight: values.weight, reps: values.reps, rir: values.rir, isWarmup: values.warmup });
+          await saveSet({ ...editing, ...checked.fields });
           state.editingSetId = null;
           toast('直しました');
         } else {
@@ -374,15 +462,14 @@ export default {
             workoutId: workout.id,
             date: workout.date,
             exerciseId: state.active,
-            weight: values.weight,
-            reps: values.reps,
-            rir: values.rir,
-            isWarmup: values.warmup,
+            ...checked.fields,
             createdAt: new Date().toISOString(),
           });
-          // ウォームアップのあとは短めの休憩(最大1分)
-          const rest = settings.training.restSeconds;
-          startRest(values.warmup ? Math.min(60, rest) : rest);
+          // 有酸素のあとは休憩タイマーなし。ウォームアップのあとは短めの休憩(最大1分)
+          if (recordType(activeExercise) !== 'cardio') {
+            const rest = settings.training.restSeconds;
+            startRest(values.warmup ? Math.min(60, rest) : rest);
+          }
         }
         await reloadSets();
         if (!editing) {

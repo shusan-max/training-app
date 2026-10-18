@@ -2,6 +2,7 @@
 // 各画面の中身は js/screens/ の中のファイルに分けて書く。
 
 import { loadSettings } from './settings-data.js';
+import { loadCustomExercises } from './exercise-data.js';
 import setup from './screens/setup.js';
 import today from './screens/today.js';
 import historyScreen from './screens/history.js';
@@ -40,6 +41,7 @@ async function showScreen() {
 
   try {
     const settings = await loadSettings();
+    await loadCustomExercises(); // 自分で作った種目も一覧に入れる
     if (myRender !== renderCount) return;
 
     // 初回設定がまだなら、初回設定の画面だけを出す

@@ -1,6 +1,7 @@
 // トレーニング(1回の練習)とセットの読み書き
 import { get, getAll, getAllByIndex, put, remove, removeMany, newId } from './db.js';
 import { formatKg } from './ui.js';
+import { recordType } from './data/exercises.js';
 
 const byDateThenCreated = (a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt);
 
@@ -101,15 +102,28 @@ export async function getPreviousSets(exerciseId, workout) {
   return { date: sets[0].date, sets };
 }
 
-// 1セットを「70kg×3回」の形にする
+// 秒を「45秒」「1分30秒」の形にする
+export function formatSeconds(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.round(seconds % 60);
+  if (m === 0) return `${s}秒`;
+  return s ? `${m}分${s}秒` : `${m}分`;
+}
+
+// 1セットを「70kg×3回」「20分・3km」「1分30秒」の形にする
 export function formatSet(set, exercise) {
-  let weight;
-  if (exercise.equipment === 'bodyweight') {
-    weight = set.weight > 0 ? `自重+${formatKg(set.weight)}kg` : '自重';
-  } else {
-    weight = `${formatKg(set.weight)}kg`;
+  switch (recordType(exercise)) {
+    case 'cardio': {
+      const minutes = `${Number(((set.durationSec ?? 0) / 60).toFixed(1))}分`;
+      return set.distanceKm ? `${minutes}・${Number(set.distanceKm.toFixed(2))}km` : minutes;
+    }
+    case 'time':
+      return formatSeconds(set.durationSec ?? 0);
+    case 'bodyweight':
+      return `${set.weight > 0 ? `自重+${formatKg(set.weight)}kg` : '自重'}×${set.reps}回`;
+    default:
+      return `${formatKg(set.weight)}kg×${set.reps}回`;
   }
-  return `${weight}×${set.reps}回`;
 }
 
 // セットの並びを「70kg×3回 ×2セット、65kg×6回」の形にまとめる(ウォームアップは除く)
@@ -118,14 +132,13 @@ export function formatSetList(sets, exercise) {
   if (work.length === 0) return 'ウォームアップのみ';
   const groups = [];
   for (const set of work) {
+    const text = formatSet(set, exercise);
     const last = groups[groups.length - 1];
-    if (last && last.weight === set.weight && last.reps === set.reps) {
+    if (last && last.text === text) {
       last.count += 1;
     } else {
-      groups.push({ weight: set.weight, reps: set.reps, count: 1 });
+      groups.push({ text, count: 1 });
     }
   }
-  return groups
-    .map((g) => `${formatSet(g, exercise)}${g.count > 1 ? ` ×${g.count}セット` : ''}`)
-    .join('、');
+  return groups.map((g) => `${g.text}${g.count > 1 ? ` ×${g.count}セット` : ''}`).join('、');
 }
