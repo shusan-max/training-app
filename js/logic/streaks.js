@@ -20,6 +20,23 @@ function mondayOf(date) {
 // 記念になる累計回数
 const SESSION_MILESTONES = [1, 10, 25, 50, 100, 150, 200, 300];
 
+const MAX_SESSION_MINUTES = 180;     // 1回のトレーニングとして数える最長の時間
+const AFTER_LAST_SET_MINUTES = 15;   // 「終える」を押し忘れたとき、最後のセットから何分までを数えるか
+
+/**
+ * 1回のトレーニングの時間(分)
+ * 「始めた時刻」から「終えた時刻」まで。押し忘れに備えて、最後のセットの15分後までにする
+ */
+export function workoutMinutes(workout, sets) {
+  if (sets.length === 0) return 0;
+  const start = new Date(workout.startedAt).getTime();
+  const lastSet = Math.max(...sets.map((s) => new Date(s.createdAt).getTime()));
+  let end = lastSet + AFTER_LAST_SET_MINUTES * 60000;
+  if (workout.finishedAt) end = Math.min(end, new Date(workout.finishedAt).getTime());
+  const minutes = Math.round((end - start) / 60000);
+  return Math.min(MAX_SESSION_MINUTES, Math.max(0, minutes));
+}
+
 /**
  * workouts, sets, bodyLogs: これまでの記録すべて(古い順)
  * baseline: 初回設定のベンチプレスの記録 / today: 今日の0時の Date
@@ -35,8 +52,23 @@ export function summarizeHistory({ workouts, sets, bodyLogs, baseline, today }) 
     .filter((w) => setsByWorkout.has(w.id))
     .map((w) => {
       const own = setsByWorkout.get(w.id);
-      return { workout: w, date: w.date, kind: workoutKind(w, own.filter((s) => s.exerciseId === 'bench-press')) };
+      return {
+        workout: w,
+        date: w.date,
+        kind: workoutKind(w, own.filter((s) => s.exerciseId === 'bench-press')),
+        minutes: workoutMinutes(w, own),
+      };
     });
+
+  // ----- 時間 -----
+  const totalMinutes = sessions.reduce((sum, s) => sum + s.minutes, 0);
+  const thisMonday = mondayOf(today);
+  const weekDayMinutes = [0, 0, 0, 0, 0, 0, 0]; // 今週の月〜日
+  sessions.forEach((s) => {
+    const index = Math.round((toDate(s.date) - thisMonday) / DAY_MS);
+    if (index >= 0 && index < 7) weekDayMinutes[index] += s.minutes;
+  });
+  const thisWeekMinutes = weekDayMinutes.reduce((a, b) => a + b, 0);
 
   // ----- カレンダー用:日付ごとの種類 -----
   const days = new Map();
@@ -62,6 +94,17 @@ export function summarizeHistory({ workouts, sets, bodyLogs, baseline, today }) 
     week = new Date(week.getTime() - 7 * DAY_MS);
   }
   const thisWeekCount = perWeek.get(toText(mondayOf(today))) ?? 0;
+
+  // これまでで一番長く続いた週数
+  let bestWeekStreak = 0;
+  let run = 0;
+  let previous = null;
+  [...perWeek.keys()].sort().forEach((key) => {
+    const monday = toDate(key);
+    run = previous && Math.round((monday - previous) / DAY_MS) === 7 ? run + 1 : 1;
+    bestWeekStreak = Math.max(bestWeekStreak, run);
+    previous = monday;
+  });
   const twiceWeeks = [...perWeek.values()].filter((n) => n >= 2).length;
 
   // ----- 体の記録の連続日数 -----
@@ -105,7 +148,11 @@ export function summarizeHistory({ workouts, sets, bodyLogs, baseline, today }) 
   return {
     days,
     weekStreak,
+    bestWeekStreak,
     thisWeekCount,
+    totalMinutes,
+    thisWeekMinutes,
+    weekDayMinutes,
     twiceWeeks,
     bodyStreak,
     totalSessions: sessions.length,

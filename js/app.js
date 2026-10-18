@@ -58,6 +58,8 @@ async function showScreen() {
       params = screens[requested] ? rest : [];
     }
     document.body.classList.toggle('setup-mode', !settings);
+    // 「今日」画面は上のタイトルを隠して、青いストライプを画面の一番上まで出す
+    document.body.classList.toggle('home-mode', Boolean(settings) && id === 'today');
     document.getElementById('screen-title').textContent = screen.title;
 
     currentScreen?.leave?.();

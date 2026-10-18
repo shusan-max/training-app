@@ -33,6 +33,7 @@ export function defaultSettings() {
       plateStepKg: 2.5,    // 重量の刻み幅(両側の合計)
       restSeconds: 180,    // 休憩時間の初期値
       deloadEveryWeeks: 5, // 軽めの週を入れる間隔
+      weeklyGoalMinutes: null, // 今週の目標の時間(null なら頻度から決める)
     },
     backup: {
       lastBackupAt: null,
@@ -59,6 +60,13 @@ export function applyProfileValues(settings, values) {
     benchBaseline: { ...settings.benchBaseline, records: values.benchRecords },
     profile: { ...settings.profile, ...values.profile },
   };
+}
+
+// 今週の目標(分)。決めていなければ「頻度 × 1回の時間」
+export function weeklyGoalMinutes(settings) {
+  if (settings.training.weeklyGoalMinutes) return settings.training.weeklyGoalMinutes;
+  const perWeek = { 1: 1, '1-2': 2, 2: 2, 3: 3 }[settings.profile.frequency] ?? 2;
+  return perWeek * (settings.profile.sessionMinutes || 60);
 }
 
 export const FREQUENCY_OPTIONS = [

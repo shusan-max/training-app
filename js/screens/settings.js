@@ -1,5 +1,5 @@
 // 「設定」画面
-import { saveSettings, frequencyLabel } from '../settings-data.js';
+import { saveSettings, frequencyLabel, weeklyGoalMinutes } from '../settings-data.js';
 import {
   createBackupFile, saveBackupFile, markBackedUp,
   readBackupFile, restoreBackup, describeBackup,
@@ -9,6 +9,11 @@ import { formatFullDateJa, daysSince, toast, isInstalledApp } from '../ui.js';
 const PLATE_STEP_OPTIONS = [[1, '1kg'], [1.25, '1.25kg'], [2.5, '2.5kg(片側1.25kg)'], [5, '5kg(片側2.5kg)']];
 const REST_OPTIONS = [[60, '1分'], [90, '1分30秒'], [120, '2分'], [180, '3分'], [240, '4分'], [300, '5分']];
 const DELOAD_OPTIONS = [[4, '4週に1回'], [5, '5週に1回'], [6, '6週に1回']];
+const WEEKLY_GOAL_OPTIONS = Array.from({ length: 20 }, (_, i) => {
+  const m = (i + 1) * 30;
+  const label = `${Math.floor(m / 60) ? `${Math.floor(m / 60)}時間` : ''}${m % 60 ? `${m % 60}分` : ''}`;
+  return [m, label];
+});
 
 function options(list, selected) {
   return list
@@ -68,6 +73,10 @@ export default {
 
       <section class="card">
         <h2>トレーニングの設定</h2>
+        <label class="field">
+          <span class="field-label">今週の目標(トレーニング時間)</span>
+          <select name="weeklyGoalMinutes">${options(WEEKLY_GOAL_OPTIONS, weeklyGoalMinutes(settings))}</select>
+        </label>
         <label class="field">
           <span class="field-label">重量の刻み幅(両側の合計)</span>
           <select name="plateStepKg">${options(PLATE_STEP_OPTIONS, training.plateStepKg)}</select>

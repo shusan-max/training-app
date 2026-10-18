@@ -61,6 +61,20 @@ export function formatKg(value) {
   return String(Number(value.toFixed(2)));
 }
 
+// 画面で使う小さな絵(線で描くアイコン)。色は文字の色に合わせて変わる
+const svg = (paths) => `<svg viewBox="0 0 24 24" aria-hidden="true">${paths}</svg>`;
+export const ICONS = {
+  barbell: svg('<path d="M3 9v6M6.5 6v12M17.5 6v12M21 9v6M6.5 12h11"/>'),
+  run: svg('<circle cx="14" cy="4.5" r="1.8"/><path d="M8 21l3-6 3 2v4M6 11l3-3 4 1 2 3 3 1M11 15l2-6"/>'),
+  timer: svg('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/>'),
+  body: svg('<circle cx="12" cy="5" r="2"/><path d="M5 9l7 1 7-1M12 10v5l-3 6M12 15l3 6"/>'),
+  chart: svg('<path d="M4 19V5M4 19h16M8 15l3.5-4 3 3L20 7"/>'),
+  heart: svg('<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>'),
+  settings: svg('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>'),
+  chevron: svg('<path d="M6 9l6 6 6-6"/>'),
+  play: svg('<path d="M8 5v14l11-7z"/>'),
+};
+
 // ホーム画面のアイコンから開いているか(アプリとして使っているか)
 export function isInstalledApp() {
   return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
