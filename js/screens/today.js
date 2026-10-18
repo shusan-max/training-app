@@ -2,8 +2,9 @@
 // 上:ストライプのダッシュボード(連続週数・START)/中:時間と回数・今週の目標/下:今日のメニュー
 import {
   formatDateJa, daysSince, daysUntil, todayString,
-  formatKg, parseDateString, isInstalledApp, ICONS,
+  formatKg, parseDateString, isInstalledApp, ICONS, escapeHtml,
 } from '../ui.js';
+import { videoUrlFor } from '../video.js';
 import { getAllBodyLogs, summarizeBodyLog } from '../body-data.js';
 import { summarizeHistory } from '../logic/streaks.js';
 import {
@@ -15,6 +16,9 @@ import { planToday, describeSteps, DAY_TYPES, SELECTABLE_TYPES } from '../logic/
 import { getExercise } from '../data/exercises.js';
 
 const BACKUP_REMIND_DAYS = 7;
+
+// 動画のリンクを作るときに使う、今の設定
+let currentSettings = null;
 const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日'];
 
 // 「種類を変える」で選んだもの(その日だけ有効)
@@ -199,6 +203,7 @@ function benchRowHtml(plan) {
         ${warm ? `<p class="menu-line"><span class="menu-tag warm">W</span>${warm}</p>` : ''}
         ${lines}
         <a class="row-link" href="#exercise/bench-press">フォームを見る ›</a>
+        <a class="row-link" href="${escapeHtml(videoUrlFor(getExercise('bench-press'), currentSettings))}" target="_blank" rel="noopener">動画を見る ›</a>
       </div>
     </details>
   `;
@@ -219,6 +224,7 @@ function accessoryRowHtml(a) {
       <div class="row-detail">
         <p class="sub">${a.note}</p>
         <a class="row-link" href="#exercise/${exercise.id}">フォームを見る ›</a>
+        <a class="row-link" href="${escapeHtml(videoUrlFor(exercise, currentSettings))}" target="_blank" rel="noopener">動画を見る ›</a>
       </div>
     </details>
   `;
@@ -310,6 +316,7 @@ function streakCard(summary) {
 export default {
   title: '今日',
   async render(container, { settings, refresh }) {
+    currentSettings = settings;
     const todayText = todayString();
     const today = parseDateString(todayText);
     const [bodyLogs, workouts, sets, plans] = await Promise.all([

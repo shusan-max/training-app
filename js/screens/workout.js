@@ -15,8 +15,9 @@ import { startRest, stopRest, unlockAudio } from '../rest-timer.js';
 import { stepperHtml, bindSteppers } from '../stepper.js';
 import { newId } from '../db.js';
 import {
-  formatDateJa, formatKg, parseDateString, parseNumber, todayString, toast, escapeHtml,
+  formatDateJa, formatKg, parseDateString, parseNumber, todayString, toast, escapeHtml, ICONS,
 } from '../ui.js';
+import { videoUrlFor } from '../video.js';
 
 // 「あと何回できたか」の選択肢(3は「3回以上」)
 const RIR_OPTIONS = [[0, '0'], [1, '1'], [2, '2'], [3, '3+']];
@@ -319,7 +320,7 @@ export default {
       return `
         <section class="card exercise-card" data-exercise="${exerciseId}">
           <div class="exercise-head">
-            <h2>${escapeHtml(exercise.name)}<a class="info-link" href="#exercise/${exerciseId}" aria-label="${escapeHtml(exercise.name)}のフォームの説明">ⓘ</a></h2>
+            <h2>${escapeHtml(exercise.name)}<a class="info-link" href="#exercise/${exerciseId}" aria-label="${escapeHtml(exercise.name)}のフォームの説明">ⓘ</a><a class="video-link" href="${escapeHtml(videoUrlFor(exercise, settings))}" target="_blank" rel="noopener" aria-label="${escapeHtml(exercise.name)}のやり方の動画">${ICONS.play}</a></h2>
             ${sets.length === 0 ? `<button type="button" class="icon-btn" data-action="remove-exercise" data-exercise="${exerciseId}" aria-label="${escapeHtml(exercise.name)}を外す">×</button>` : ''}
           </div>
           <p class="previous">${previousText}</p>

@@ -5,7 +5,12 @@ import { getAllSets, formatSet, formatSetList } from '../workout-data.js';
 import { deleteCustomExercise } from '../exercise-data.js';
 import { openExerciseForm } from '../exercise-form.js';
 import { bestEstimate } from '../logic/e1rm.js';
-import { formatDateJa, parseDateString, toast, escapeHtml } from '../ui.js';
+import {
+  formatDateJa, parseDateString, toast, escapeHtml, ICONS,
+} from '../ui.js';
+import {
+  youtubeSearchUrl, savedVideoUrl, normalizeVideoUrl, saveVideoUrl,
+} from '../video.js';
 
 // あなたのこれまでの記録(前回と自己ベスト)
 function myRecordHtml(exercise, sets) {
@@ -32,10 +37,51 @@ function myRecordHtml(exercise, sets) {
   return `<dl class="summary stacked">${rows.join('')}</dl>`;
 }
 
+// やり方の動画:保存した動画があればそれを大きく、無ければ YouTube でさがすボタンを大きく
+function videoCardHtml(exercise, settings) {
+  const saved = savedVideoUrl(exercise, settings);
+  const form = `
+    <form class="video-form" novalidate>
+      <label class="field">
+        <span class="field-label">${saved ? '別の動画に変える' : 'わかりやすい動画が見つかったら、URLを保存できます'}</span>
+        <input name="url" type="url" inputmode="url" placeholder="https://youtu.be/..." autocomplete="off">
+      </label>
+      <button type="submit" class="btn btn-secondary">この動画を保存</button>
+    </form>
+  `;
+  return `
+    <section class="card video-card">
+      <h2>やり方を動画で見る</h2>
+      ${saved ? `
+        <a class="btn video-btn" href="${escapeHtml(saved)}" target="_blank" rel="noopener">${ICONS.play}保存した動画を見る</a>
+        <a class="btn btn-secondary" href="${youtubeSearchUrl(exercise)}" target="_blank" rel="noopener">YouTubeでほかの動画をさがす</a>
+        <div class="video-actions">
+          <button type="button" class="link-button" data-action="change-video">動画を変える</button>
+          <button type="button" class="link-button danger" data-action="remove-video">保存した動画を外す</button>
+        </div>
+        <div class="video-change" hidden>${form}</div>
+      ` : `
+        <a class="btn video-btn" href="${youtubeSearchUrl(exercise)}" target="_blank" rel="noopener">${ICONS.play}YouTubeでやり方をさがす</a>
+        <details class="video-help">
+          <summary>見つけた動画を保存するには</summary>
+          <ol class="steps">
+            <li>上のボタンで YouTube を開き、わかりやすい動画を選ぶ</li>
+            <li>動画の下の <strong>「共有」</strong> →<strong>「コピー」</strong> を押す</li>
+            <li>このアプリに戻り、下の欄に貼り付けて <strong>「この動画を保存」</strong></li>
+          </ol>
+          <p class="sub">次からは、ボタン1つでその動画が開きます。</p>
+        </details>
+        ${form}
+      `}
+      <p class="sub video-note">動画を見るには電波が必要です。</p>
+    </section>
+  `;
+}
+
 export default {
   title: '種目の説明',
   tab: 'exercises',
-  async render(container, { params, refresh }) {
+  async render(container, { settings, params, refresh }) {
     const exercise = getExercise(params[0]);
     const guide = GUIDES[exercise.id];
     const muscles = guide?.muscles ?? exercise.muscles;
@@ -59,7 +105,8 @@ export default {
         ` : ''}
         <p class="sub" style="margin-top:8px">記録のしかた:${recordLabel}</p>
       </section>
-      ${sections || '<section class="card"><p class="sub">この種目の文章の説明はまだありません。</p></section>'}
+      ${videoCardHtml(exercise, settings)}
+      ${sections || '<section class="card"><p class="sub">この種目の文章の説明はまだありません。上の動画で確かめてください。</p></section>'}
       <section class="card">
         <h2>あなたの記録</h2>
         ${myRecordHtml(exercise, sets)}
@@ -82,6 +129,30 @@ export default {
       } else {
         location.hash = '#exercises';
       }
+    });
+
+    // 動画の URL を保存する・消す
+    const videoForm = container.querySelector('.video-form');
+    videoForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const url = normalizeVideoUrl(videoForm.elements.url.value);
+      if (!url) {
+        toast('https:// で始まる動画のURLを貼り付けてください');
+        return;
+      }
+      await saveVideoUrl(settings, exercise, url);
+      toast('動画を保存しました');
+      refresh();
+    });
+    container.querySelector('[data-action="change-video"]')?.addEventListener('click', () => {
+      container.querySelector('.video-change').hidden = false;
+      container.querySelector('.video-change input').focus();
+    });
+    container.querySelector('[data-action="remove-video"]')?.addEventListener('click', async () => {
+      if (!confirm('保存した動画を外します。よろしいですか?')) return;
+      await saveVideoUrl(settings, exercise, null);
+      toast('外しました');
+      refresh();
     });
 
     container.querySelector('[data-action="edit"]')?.addEventListener('click', () => {

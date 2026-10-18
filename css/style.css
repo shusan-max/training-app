@@ -1442,3 +1442,58 @@ input[type="search"]:focus { outline: 2px solid var(--accent); outline-offset: -
 .sheet .form .field:first-child { margin-top: 0; }
 .sheet .form .btn { margin-top: 14px; }
 .record-hint { margin-top: 8px !important; }
+
+/* ===== やり方の動画 ===== */
+.video-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.video-btn svg, .video-link svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  stroke: none;
+}
+.video-card .btn + .btn { margin-top: 10px; }
+.video-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.link-button.danger { color: var(--danger); }
+.video-actions .link-button { color: var(--accent); font-weight: 700; padding: 6px 0; }
+.video-actions .link-button.danger { color: var(--danger); }
+.video-help { margin-top: 12px; }
+.video-help summary { color: var(--accent); font-weight: 700; cursor: pointer; }
+.video-note { margin-top: 10px !important; font-size: 12px; }
+input[type="url"] {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="url"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+/* トレーニング中の種目名の横の ▶ */
+.video-link {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  vertical-align: middle;
+}
+.video-link svg { width: 14px; height: 14px; }
+.row-detail .row-link { margin-right: 14px; }
